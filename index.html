@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Celestita House ID Generator</title>
+  <meta name="description" content="Generador de credencial personalizada Celestita House. Subí tu foto, completá tus datos, firmá y descargá tu credencial." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Caveat:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1 class="card-title">Hace click y personaliza la tuya.</h1>
+    </header>
+
+    <main>
+      <div id="card-wrapper" class="card-wrapper">
+        <img id="card-bg" class="card-bg" src="assets/credencial-sin-fondo.png" alt="Credencial Celestita House" draggable="false" />
+
+        <button type="button" id="photo-box" class="photo-box" aria-label="Subir foto"></button>
+        <input type="file" id="photo-input" accept="image/*" hidden />
+
+        <input type="text" id="field-nombre" class="field" data-field="nombre" placeholder="Tu nombre" maxlength="40" autocomplete="off" />
+        <input type="text" id="field-fecha" class="field" data-field="fecha" placeholder="DD/MM/AAAA" maxlength="10" inputmode="numeric" autocomplete="off" />
+        <input type="text" id="field-ciudad" class="field" data-field="ciudad" placeholder="Tu ciudad" maxlength="40" autocomplete="off" />
+        <input type="text" id="field-prenda" class="field" data-field="prenda" placeholder="Tu prenda fav" maxlength="30" autocomplete="off" />
+
+        <canvas id="signature-canvas" class="signature-canvas" aria-label="Dibujá tu firma aquí"></canvas>
+        <button type="button" id="btn-clear-signature" class="clear-signature-btn" aria-label="Borrar firma" hidden>×</button>
+      </div>
+
+      <div class="controls">
+        <button type="button" id="btn-download" class="btn">Descargar ID</button>
+        <button type="button" id="btn-share" class="btn">Compartir ID</button>
+      </div>
+
+      <p id="status-msg" class="status-msg" role="status" aria-live="polite"></p>
+    </main>
+
+  </div>
+
+  <div id="privacy-toast" class="privacy-toast" role="status" aria-live="polite">
+    <p>Sus datos están protegidos. La credencial se genera íntegramente en este entorno seguro y su información nunca abandona su equipo.</p>
+    <button type="button" id="privacy-toast-close" class="privacy-toast-close" aria-label="Cerrar aviso">×</button>
+  </div>
+
+  <div id="crop-modal" class="crop-modal" hidden>
+    <div id="crop-modal-backdrop" class="crop-modal-backdrop"></div>
+    <div class="crop-modal-panel" role="dialog" aria-modal="true" aria-label="Ajustar foto">
+      <button type="button" id="crop-modal-close" class="crop-modal-close" aria-label="Cancelar">×</button>
+      <canvas id="crop-canvas" class="crop-canvas" aria-label="Arrastrá para mover la foto"></canvas>
+      <div class="crop-controls">
+        <div class="crop-zoom">
+          <span class="crop-zoom-icon" aria-hidden="true">－</span>
+          <input type="range" id="crop-zoom" min="1" max="3" step="0.01" value="1" aria-label="Zoom" />
+          <span class="crop-zoom-icon" aria-hidden="true">＋</span>
+        </div>
+        <div class="crop-actions">
+          <button type="button" id="crop-rotate-left" class="crop-icon-btn" aria-label="Rotar a la izquierda">⟲</button>
+          <button type="button" id="crop-rotate-right" class="crop-icon-btn" aria-label="Rotar a la derecha">⟳</button>
+          <button type="button" id="crop-reset" class="crop-icon-btn" aria-label="Restablecer ajustes">↺</button>
+          <button type="button" id="crop-confirm" class="crop-confirm-btn">Listo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
