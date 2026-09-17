@@ -3,7 +3,9 @@
 
   // ---------------------------------------------------------------------
   // Layout configuration. All coordinates are in the design space of the
-  // background artwork (assets/credencial-sin-fondo.png), which is a
+  // background artwork (assets/credential-0.webp — same art as the
+  // original credencial-sin-fondo.png, re-exported as webp for a much
+  // smaller payload), which is a
   // brand-new single-card design (2599x1632px — no more left/right
   // bifold) re-measured pixel-by-pixel from scratch: solid photo-frame
   // edges via dark-line density scans, dotted field lines the same way,
