@@ -1,0 +1,462 @@
+:root {
+  --bg: #BAD3E6;
+  --ink: #183145;
+  --accent: #86A0BE;
+  --accent-dark: #452C19;
+  --dark: #111;
+  --card-max-width: 900px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body {
+  position: relative;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Courier Prime', Courier, monospace;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Figma noise effect replicated with feTurbulence: baseFrequency 0.4/0.4
+   maps 1:1 to Figma's noise Size X/Y; feFuncA slope 0.4 maps to Figma's
+   Density 40% (scales how much of the generated grain is visible); the
+   feColorMatrix zeroes RGB (Monochrome, color #000000) while passing
+   alpha through unchanged; the layer's own opacity (25%) is applied via
+   CSS opacity below instead of baked into the filter, so it stays easy
+   to tune independently of density/size. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.25;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.4' numOctaves='2' stitchTiles='stitch' result='noise'/%3E%3CfeColorMatrix in='noise' type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0' result='mono'/%3E%3CfeComponentTransfer in='mono'%3E%3CfeFuncA type='linear' slope='0.4' intercept='0'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  width: 100%;
+  padding: 28px 16px;
+  max-width: 1680px;
+  margin: 0 auto;
+}
+
+.app-header {
+  text-align: center;
+}
+
+.card-title {
+  margin: 0;
+  font-weight: 600;
+  color: #f7f7f7;
+  font-size: clamp(20px, 4vw, 30px);
+  letter-spacing: 0.2px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 36px;
+  width: 100%;
+}
+
+/* ---------- Card ---------- */
+
+.card-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: var(--card-max-width);
+  aspect-ratio: 2599 / 1632;
+  margin: 0 auto;
+  user-select: none;
+}
+
+.card-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.photo-box {
+  position: absolute;
+  appearance: none;
+  border: none;
+  background: transparent;
+  background-size: cover;
+  background-position: center;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  outline: 3px dashed transparent;
+  outline-offset: -6px;
+  transition: outline-color 0.15s ease, background 0.15s ease;
+}
+
+.photo-box.has-photo {
+  transform: rotate(-0.65deg);
+  box-shadow: 6px 6px 24px rgba(0, 0, 0, 0.62);
+}
+
+/* Dropzone affordance (feedback from CMIYGL reference): the frame is
+   already drawn into the card art, so we only need a highlight while a
+   file is actually being dragged over it — a permanent dashed border
+   would fight the vintage artwork's own frame lines. */
+.photo-box.is-dragover {
+  outline-color: var(--accent);
+  background: rgba(186, 211, 230, 0.28);
+}
+
+.field {
+  /* Credential ink stays the vintage typewriter brown, independent of
+     the page's brand palette above (--ink is now the brand navy). */
+  position: absolute;
+  border: none;
+  background: transparent;
+  color: #000;
+  opacity: 1;
+  font-family: 'Caveat', cursive;
+  font-weight: 400;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  caret-color: #000;
+  white-space: nowrap;
+  overflow: hidden;
+  /* Box spans the full dotted-line length (js/app.js FIELDS[*].xCenter
+     ± maxWidth/2) — center here keeps the typed value centered along
+     the line, matching the centered ctx.fillText() on export. */
+  text-align: center;
+}
+
+.field:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.field::placeholder {
+  color: #000;
+  opacity: 1;
+}
+
+.signature-canvas {
+  position: absolute;
+  cursor: crosshair;
+  touch-action: none;
+  color: var(--accent-dark);
+}
+
+.clear-signature-btn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #000;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.clear-signature-btn:hover {
+  opacity: 0.6;
+}
+
+.clear-signature-btn:active {
+  transform: scale(0.92);
+}
+
+.clear-signature-btn[hidden] {
+  display: none;
+}
+
+/* ---------- Controls ---------- */
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+  max-width: var(--card-max-width);
+}
+
+.btn {
+  font-family: 'Courier Prime', Courier, monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: clamp(12px, 3vw, 14px);
+  letter-spacing: 0.4px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  border: none;
+  background: #f7f7f7;
+  color: #bad3e6;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.btn:hover {
+  background: #fff;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.status-msg {
+  min-height: 20px;
+  font-size: 13px;
+  color: var(--ink);
+  text-align: center;
+  margin: 0;
+}
+
+/* ---------- Privacy toast (was a static footer note; now a dismissible pop-up) ---------- */
+
+.privacy-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  max-width: 340px;
+  background: #f7f7f7;
+  color: #bad3e6;
+  font-family: 'Courier Prime', Courier, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+  padding: 16px 18px;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(16px);
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.privacy-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.privacy-toast p {
+  margin: 0;
+  flex: 1;
+}
+
+.privacy-toast-close {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: #bad3e6;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.privacy-toast-close:hover {
+  opacity: 0.6;
+}
+
+/* ---------- Crop modal (pan/zoom/rotate the photo before it lands in the frame) ---------- */
+
+.crop-modal[hidden] {
+  display: none;
+}
+
+.crop-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.crop-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.6);
+}
+
+.crop-modal-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  background: #f7f7f7;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  max-width: calc(100vw - 40px);
+}
+
+.crop-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+  padding: 4px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.crop-modal-close:hover {
+  opacity: 0.6;
+}
+
+.crop-canvas {
+  display: block;
+  width: 340px;
+  height: 298px;
+  max-width: 100%;
+  border-radius: 6px;
+  background: #ddd;
+  cursor: grab;
+  touch-action: none;
+}
+
+.crop-canvas:active {
+  cursor: grabbing;
+}
+
+.crop-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 340px;
+  max-width: 100%;
+}
+
+.crop-zoom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  color: var(--ink);
+}
+
+.crop-zoom-icon {
+  font-size: 14px;
+  line-height: 1;
+  user-select: none;
+}
+
+.crop-zoom input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent-dark);
+}
+
+.crop-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.crop-icon-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.crop-icon-btn:hover {
+  background: rgba(24, 49, 69, 0.07);
+}
+
+.crop-icon-btn:active {
+  transform: translateY(1px);
+}
+
+.crop-confirm-btn {
+  flex: 1;
+  font-family: 'Courier Prime', Courier, monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 14px;
+  letter-spacing: 0.4px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: none;
+  background: #bad3e6;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.crop-confirm-btn:hover {
+  background: #a4c5dd;
+}
+
+.crop-confirm-btn:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding: 16px 10px 32px;
+    gap: 36px;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .privacy-toast {
+    right: 16px;
+    left: 16px;
+    bottom: 16px;
+    max-width: none;
+  }
+}
