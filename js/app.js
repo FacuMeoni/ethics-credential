@@ -1,43 +1,19 @@
 (() => {
   'use strict';
 
-  // ---------------------------------------------------------------------
-  // Layout configuration. All coordinates are in the design space of the
-  // background artwork (assets/credential-0.webp — same art as the
-  // original credencial-sin-fondo.png, re-exported as webp for a much
-  // smaller payload), which is a
-  // brand-new single-card design (2599x1632px — no more left/right
-  // bifold) re-measured pixel-by-pixel from scratch: solid photo-frame
-  // edges via dark-line density scans, dotted field lines the same way,
-  // and each field's horizontal placement cross-checked against the
-  // placeholder mockup (credential-1.png) and the filled reference
-  // (credential-2.png) supplied alongside it. Every on-screen element is
-  // positioned as a fraction of this space via the CSS custom property
-  // --scale, so the exported PNG (always rendered at 2599x1632) matches
-  // the live preview exactly.
-  // ---------------------------------------------------------------------
+  // Coordenadas en el espacio de diseño del fondo (2599x1632, assets/credential-0.webp), medidas a mano pixel por pixel; --scale las reescala para que la vista previa y el PNG exportado coincidan siempre.
   const CARD_W = 2599;
   const CARD_H = 1632;
 
   const PHOTO = { x: 257, y: 278, w: 1040, h: 913 };
 
-  // Matches the CSS .photo-box.has-photo transform/box-shadow (css/style.css)
-  // so the exported PNG looks the same as the live preview. The CSS shadow is
-  // defined in real screen pixels at the card's max display width
-  // (--card-max-width), while the export always renders at the fixed design
-  // resolution (CARD_W) — scale the offset/blur by that ratio so it reads the
-  // same size relative to the card in both places.
+  // Replica la sombra y rotación de .photo-box.has-photo (CSS) al exportar, escalando el shadow por CARD_W/900 para que se vea igual en el PNG.
   const PHOTO_ROTATION_DEG = -0.65;
   const PHOTO_SHADOW = { offsetX: 6, offsetY: 6, blur: 24, color: 'rgba(0, 0, 0, 0.62)' };
   const CARD_MAX_DISPLAY_WIDTH = 900;
   const EXPORT_SHADOW_SCALE = CARD_W / CARD_MAX_DISPLAY_WIDTH;
 
-  // Typed text sits centered above each dotted line (not flush-left
-  // after the label) — confirmed against credential-1.png's placeholder
-  // mockup, where "Tu nombre"/"DD/MM/AA"/etc. all center within the
-  // blank run of their line. xCenter/maxWidth span that blank run
-  // (label end to line end); yBaseline sits the measured gap above the
-  // dotted line itself (not merged into it, per the mockup).
+  // Cada campo se centra arriba de su línea punteada: xCenter/maxWidth definen ese espacio y yBaseline es la altura justo por encima de la línea.
   const FIELDS = {
     nombre: { xCenter: 1910, yBaseline: 510, maxWidth: 880, fontSize: 82, minFontSize: 40 },
     fecha: { xCenter: 2080, yBaseline: 616, maxWidth: 620, fontSize: 82, minFontSize: 37 },
@@ -45,19 +21,11 @@
     prenda: { xCenter: 2055, yBaseline: 822, maxWidth: 720, fontSize: 82, minFontSize: 37 },
   };
 
-  // The "Firma" label now sits BELOW-right of its dashed line (not to
-  // the left, like the other fields), so the signature is drawn in the
-  // open block above the line instead — from right under the "- Ethics"
-  // credit down to the line itself, spanning the same width as the
-  // other field lines.
+  // La firma se dibuja arriba de su línea punteada, en el bloque libre debajo del texto "- Ethics", con el mismo ancho que las otras líneas.
   const SIGNATURE_BOX = { x: 1310, y: 1055, w: 1190, h: 350 };
   const SIGNATURE_SUPERSAMPLE = 3;
 
-  // Small "clear signature" X, anchored to the signature LINE itself
-  // (not the much taller canvas box) — sits just past where the dashed
-  // line ends, above the "Firma" label, pixel-measured against the
-  // background art (line: x 1372-2361, y 1280-1283; "Firma" label
-  // starts at y 1295).
+  // El botón de borrar firma va pegado al final de la línea punteada, no al canvas (que es mucho más alto), medido a mano sobre el fondo.
   const CLEAR_BTN = { size: 140, x: 2240, y: 1180 };
 
   const INK_COLOR = '#000';
@@ -65,7 +33,7 @@
   const FONT_FAMILY_CSS = "'Caveat', cursive";
 
   // ---------------------------------------------------------------------
-  // Element references
+  // Referencias a los elementos del DOM
   // ---------------------------------------------------------------------
   const wrapper = document.getElementById('card-wrapper');
   const cardBg = document.getElementById('card-bg');
@@ -89,13 +57,25 @@
   };
 
   // ---------------------------------------------------------------------
-  // Responsive scaling
+  // Escalado responsive
   // ---------------------------------------------------------------------
   function updateScale() {
     const width = wrapper.getBoundingClientRect().width;
     if (width > 0) {
       wrapper.style.setProperty('--scale', (width / CARD_W).toFixed(6));
     }
+  }
+
+  // La tarjeta arranca invisible y aparece con fade-in recién cuando termina de cargar el fondo, así los campos nunca flotan sobre un fondo vacío.
+  function revealCard() {
+    wrapper.classList.add('is-ready');
+  }
+
+  function markBgLoaded() {
+    if (state.bgLoaded) return;
+    state.bgLoaded = true;
+    updateScale();
+    revealCard();
   }
 
   if ('ResizeObserver' in window) {
@@ -109,7 +89,7 @@
   }
 
   // ---------------------------------------------------------------------
-  // Position photo box
+  // Posición del recuadro de foto
   // ---------------------------------------------------------------------
   photoBox.style.left = calcPx(PHOTO.x);
   photoBox.style.top = calcPx(PHOTO.y);
@@ -118,9 +98,7 @@
 
   photoBox.addEventListener('click', () => photoInput.click());
 
-  // Dropzone highlight (feedback from the CMIYGL reference): the frame is
-  // already drawn into the card art, so we only flag the box while a file
-  // is actively being dragged over it, via .is-dragover in css/style.css.
+  // Resalta el recuadro de foto solo mientras se arrastra un archivo encima (el marco ya está dibujado en el arte de fondo).
   let dragDepth = 0;
   photoBox.addEventListener('dragenter', (e) => {
     e.preventDefault();
@@ -173,12 +151,7 @@
   }
 
   // ---------------------------------------------------------------------
-  // Crop modal — pan/zoom/rotate the uploaded photo before it lands in
-  // PHOTO's frame, mirroring the reference's react-easy-crop flow but
-  // hand-rolled with a plain <canvas> (no extra dependency). The crop
-  // canvas is drawn at the SAME aspect ratio as PHOTO, so the confirmed
-  // output already matches the frame exactly — generateFinalCanvas()'s
-  // drawImageCover() then just draws it 1:1, no further cropping.
+  // Modal para mover/hacer zoom/rotar la foto antes de encajarla en el marco, hecho a mano con <canvas> y con el mismo aspect ratio que PHOTO.
   // ---------------------------------------------------------------------
   const cropModal = document.getElementById('crop-modal');
   const cropModalBackdrop = document.getElementById('crop-modal-backdrop');
@@ -328,16 +301,12 @@
   });
 
   // ---------------------------------------------------------------------
-  // Position + fit text fields
+  // Posición y ajuste automático de los campos de texto
   // ---------------------------------------------------------------------
   const measureCanvas = document.createElement('canvas');
   const measureCtx = measureCanvas.getContext('2d');
 
-  // Caveat loads async via the Google Fonts <link>; until it's ready,
-  // measureText()/fillText() silently fall back to the browser's
-  // default cursive font, throwing off both the auto-shrink math and
-  // the exported PNG. Kick the load off immediately and re-run the fit
-  // for whatever the user already typed once it lands.
+  // La fuente Caveat carga async; hasta que esté lista medimos con la fuente por defecto, así que recalculamos el tamaño apenas termina de cargar.
   const fontReady = document.fonts
     ? document.fonts.load(`22px ${FONT_FAMILY_CSS}`).catch(() => {})
     : Promise.resolve();
@@ -360,11 +329,7 @@
     return digits;
   }
 
-  // top/height/line-height depend on the CURRENT font size, not the
-  // field's base size — recomputed on every keystroke below, otherwise
-  // the text visually drifts off the baseline as it auto-shrinks to
-  // fit (each field shrinks by a different amount, so they used to end
-  // up unevenly aligned against their dotted lines).
+  // Se recalcula en cada tecla porque el tamaño de fuente cambia (auto-shrink); si no, el texto queda desalineado de su línea punteada.
   function applyFieldGeometry(input, cfg, fontPx) {
     const boxHeight = fontPx * 1.15;
     const boxTop = cfg.yBaseline - fontPx * 0.82;
@@ -377,9 +342,7 @@
   Object.entries(FIELDS).forEach(([key, cfg]) => {
     const input = fieldInputs[key];
 
-    // Box spans the full line width, centered on xCenter; text-align:
-    // center (css/style.css) keeps the typed value centered inside it,
-    // matching the centered ctx.fillText() in the exported PNG.
+    // El input ocupa todo el ancho de la línea y se centra por CSS, igual que el texto centrado al exportar.
     input.style.left = calcPx(cfg.xCenter - cfg.maxWidth / 2);
     input.style.width = calcPx(cfg.maxWidth);
     applyFieldGeometry(input, cfg, cfg.fontSize);
@@ -399,7 +362,7 @@
   });
 
   // ---------------------------------------------------------------------
-  // Signature canvas
+  // Canvas de la firma
   // ---------------------------------------------------------------------
   signatureCanvas.width = SIGNATURE_BOX.w * SIGNATURE_SUPERSAMPLE;
   signatureCanvas.height = SIGNATURE_BOX.h * SIGNATURE_SUPERSAMPLE;
@@ -465,7 +428,7 @@
   btnClearSignature.addEventListener('click', clearSignature);
 
   // ---------------------------------------------------------------------
-  // Export
+  // Exportación
   // ---------------------------------------------------------------------
   function drawImageCover(ctx, img, dx, dy, dw, dh) {
     const imgRatio = img.width / img.height;
@@ -489,7 +452,7 @@
     if (state.bgLoaded) return Promise.resolve();
     return new Promise((resolve) => {
       cardBg.addEventListener('load', () => {
-        state.bgLoaded = true;
+        markBgLoaded();
         resolve();
       }, { once: true });
     });
@@ -618,7 +581,7 @@
   });
 
   // ---------------------------------------------------------------------
-  // Privacy toast
+  // Aviso de privacidad (toast)
   // ---------------------------------------------------------------------
   const privacyToast = document.getElementById('privacy-toast');
   const privacyToastClose = document.getElementById('privacy-toast-close');
@@ -638,13 +601,12 @@
   }
 
   // ---------------------------------------------------------------------
-  // Init
+  // Inicialización
   // ---------------------------------------------------------------------
   updateScale();
-  if (!state.bgLoaded) {
-    cardBg.addEventListener('load', () => {
-      state.bgLoaded = true;
-      updateScale();
-    }, { once: true });
+  if (state.bgLoaded) {
+    revealCard();
+  } else {
+    cardBg.addEventListener('load', markBgLoaded, { once: true });
   }
 })();
