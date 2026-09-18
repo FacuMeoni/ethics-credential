@@ -28,13 +28,7 @@ body {
   justify-content: center;
 }
 
-/* Figma noise effect replicated with feTurbulence: baseFrequency 0.4/0.4
-   maps 1:1 to Figma's noise Size X/Y; feFuncA slope 0.4 maps to Figma's
-   Density 40% (scales how much of the generated grain is visible); the
-   feColorMatrix zeroes RGB (Monochrome, color #000000) while passing
-   alpha through unchanged; the layer's own opacity (25%) is applied via
-   CSS opacity below instead of baked into the filter, so it stays easy
-   to tune independently of density/size. */
+/* Ruido tipo Figma con un filtro SVG: baseFrequency = Tamaño, feFuncA slope = Densidad, y la opacity de acá abajo = opacidad del ruido. */
 body::before {
   content: '';
   position: fixed;
@@ -81,7 +75,7 @@ main {
   width: 100%;
 }
 
-/* ---------- Card ---------- */
+/* ---------- Tarjeta ---------- */
 
 .card-wrapper {
   position: relative;
@@ -90,6 +84,13 @@ main {
   aspect-ratio: 2599 / 1632;
   margin: 0 auto;
   user-select: none;
+  /* Oculta hasta que carga el fondo (JS agrega .is-ready), para que los campos no floten sobre un fondo vacío en conexiones lentas. */
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.card-wrapper.is-ready {
+  opacity: 1;
 }
 
 .card-bg {
@@ -122,18 +123,14 @@ main {
   box-shadow: 6px 6px 24px rgba(0, 0, 0, 0.62);
 }
 
-/* Dropzone affordance (feedback from CMIYGL reference): the frame is
-   already drawn into the card art, so we only need a highlight while a
-   file is actually being dragged over it — a permanent dashed border
-   would fight the vintage artwork's own frame lines. */
+/* Resalta el recuadro solo mientras se arrastra un archivo encima; el marco ya está dibujado en el arte de fondo. */
 .photo-box.is-dragover {
   outline-color: var(--accent);
   background: rgba(186, 211, 230, 0.28);
 }
 
 .field {
-  /* Credential ink stays the vintage typewriter brown, independent of
-     the page's brand palette above (--ink is now the brand navy). */
+  /* El texto de la credencial siempre es negro, sin importar la paleta de la página. */
   position: absolute;
   border: none;
   background: transparent;
@@ -147,9 +144,7 @@ main {
   caret-color: #000;
   white-space: nowrap;
   overflow: hidden;
-  /* Box spans the full dotted-line length (js/app.js FIELDS[*].xCenter
-     ± maxWidth/2) — center here keeps the typed value centered along
-     the line, matching the centered ctx.fillText() on export. */
+  /* El input ocupa toda la línea punteada y se centra, igual que el texto en el PNG exportado. */
   text-align: center;
 }
 
@@ -197,7 +192,7 @@ main {
   display: none;
 }
 
-/* ---------- Controls ---------- */
+/* ---------- Controles ---------- */
 
 .controls {
   display: flex;
@@ -239,7 +234,7 @@ main {
   margin: 0;
 }
 
-/* ---------- Privacy toast (was a static footer note; now a dismissible pop-up) ---------- */
+/* ---------- Aviso de privacidad (antes era un footer fijo, ahora es un pop-up que se puede cerrar) ---------- */
 
 .privacy-toast {
   position: fixed;
@@ -292,7 +287,7 @@ main {
   opacity: 0.6;
 }
 
-/* ---------- Crop modal (pan/zoom/rotate the photo before it lands in the frame) ---------- */
+/* ---------- Modal de recorte (mover/zoom/rotar la foto antes de encajarla en el marco) ---------- */
 
 .crop-modal[hidden] {
   display: none;
